@@ -9,13 +9,15 @@ REST API на FastAPI с PostgreSQL в Docker Compose.
 - PostgreSQL 15
 - SQLAlchemy
 - Docker Compose
+- GitHub Actions
+- Docker Hub
 
 ## Требования
 
 - Docker
 - Docker Compose
 
-## Быстрый старт
+## Локальный запуск
 
 Клонируй репозиторий:
 
@@ -41,7 +43,7 @@ docker compose up --build
 
 ## Эндпоинты
 
-API будет доступен на `http://localhost:8000`
+API доступен на `http://localhost:8000`
 
 Документация Swagger: `http://localhost:8000/docs`
 
@@ -57,3 +59,14 @@ API будет доступен на `http://localhost:8000`
 - `db` — PostgreSQL база данных
 
 Данные базы сохраняются в Docker volume между перезапусками.
+
+## CI/CD
+
+Проект использует GitHub Actions для автоматического деплоя:
+
+1. При push в `main` собирается Docker образ
+2. Образ пушится в Docker Hub
+3. На сервере обновляется `docker-compose.yml` и переменные окружения
+4. Запускается `docker compose pull` и `docker compose up -d`
+
+Секреты (пароли базы данных, SSH ключи) хранятся в GitHub Secrets, не в коде.
