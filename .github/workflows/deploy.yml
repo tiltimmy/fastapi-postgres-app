@@ -27,30 +27,29 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy to VPS
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "~/fastapi-app"
+
+      - name: Deploy via Compose
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            docker network create app-network || true
-            
-            docker stop fastapi-db || true
-            docker rm fastapi-db || true
-            docker run -d --name fastapi-db \
-              --network app-network \
-              -e POSTGRES_USER=admin \
-              -e POSTGRES_PASSWORD=secret123 \
-              -e POSTGRES_DB=mydb \
-              -v postgres_data:/var/lib/postgresql/data \
-              postgres:15
-
-            docker pull tiltimmy/fastapi-postgres-app:latest
-            docker stop fastapi-api || true
-            docker rm fastapi-api || true
-            docker run -d --name fastapi-api \
-              --network app-network \
-              -p 8000:8000 \
-              -e DATABASE_URL="postgresql://admin:secret123@fastapi-db:5432/mydb" \
-              tiltimmy/fastapi-postgres-app:latest
+            cd ~/fastapi-app
+            echo "POSTGRES_USER=${{ secrets.DB_USER }}" > .env
+            echo "POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "POSTGRES_DB=${{ secrets.DB_NAME }}" >> .env
+            echo "DATABASE_URL=postgresql://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db:5432/${{ secrets.DB_NAME }}" >> .env
+            docker compose pull
+            docker compose up -d
