@@ -1,0 +1,56 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: tiltimmy/fastapi-postgres-app:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            docker network create app-network || true
+            
+            docker stop fastapi-db || true
+            docker rm fastapi-db || true
+            docker run -d --name fastapi-db \
+              --network app-network \
+              -e POSTGRES_USER=admin \
+              -e POSTGRES_PASSWORD=secret123 \
+              -e POSTGRES_DB=mydb \
+              -v postgres_data:/var/lib/postgresql/data \
+              postgres:15
+
+            docker pull tiltimmy/fastapi-postgres-app:latest
+            docker stop fastapi-api || true
+            docker rm fastapi-api || true
+            docker run -d --name fastapi-api \
+              --network app-network \
+              -p 8000:8000 \
+              -e DATABASE_URL="postgresql://admin:secret123@fastapi-db:5432/mydb" \
+              tiltimmy/fastapi-postgres-app:latest
