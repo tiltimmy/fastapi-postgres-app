@@ -1,6 +1,6 @@
 # FastAPI + PostgreSQL App
 
-REST API на FastAPI с PostgreSQL в Docker Compose.
+REST API на FastAPI с PostgreSQL, за nginx reverse proxy, в Docker Compose.
 
 ## Технологии
 
@@ -8,6 +8,7 @@ REST API на FastAPI с PostgreSQL в Docker Compose.
 - FastAPI
 - PostgreSQL 15
 - SQLAlchemy
+- Nginx
 - Docker Compose
 - GitHub Actions
 - Docker Hub
@@ -43,9 +44,9 @@ docker compose up --build
 
 ## Эндпоинты
 
-API доступен на `http://localhost:8000`
+API доступен через nginx на `http://localhost` (порт 80)
 
-Документация Swagger: `http://localhost:8000/docs`
+Документация Swagger: `http://localhost/docs`
 
 - `GET /` — проверка что API работает
 - `GET /health` — health check
@@ -54,8 +55,13 @@ API доступен на `http://localhost:8000`
 
 ## Архитектура
 
-Два контейнера:
-- `api` — FastAPI приложение
+```
+Интернет → nginx (порт 80) → FastAPI (порт 8000, скрыт) → PostgreSQL
+```
+
+Три контейнера:
+- `nginx` — reverse proxy, единственная точка входа снаружи
+- `api` — FastAPI приложение, недоступен напрямую из интернета
 - `db` — PostgreSQL база данных
 
 Данные базы сохраняются в Docker volume между перезапусками.
@@ -66,7 +72,7 @@ API доступен на `http://localhost:8000`
 
 1. При push в `main` собирается Docker образ
 2. Образ пушится в Docker Hub
-3. На сервере обновляется `docker-compose.yml` и переменные окружения
+3. На сервер копируются `docker-compose.yml` и `nginx.conf`
 4. Запускается `docker compose pull` и `docker compose up -d`
 
 Секреты (пароли базы данных, SSH ключи) хранятся в GitHub Secrets, не в коде.
