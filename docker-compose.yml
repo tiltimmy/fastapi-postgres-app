@@ -1,11 +1,6 @@
 services:
-<<<<<<< HEAD
   nginx:
     image: nginx:latest
-=======
-  api:
-    image: tiltimmy/fastapi-postgres-app:latest
->>>>>>> cdc58b7ffbdad1b8d4a22ef720b449bffa778ca6
     ports:
       - "80:80"
     volumes:
